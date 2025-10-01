@@ -62,10 +62,14 @@ COPY . /var/www/html
 # Create .env file for build time (required for artisan commands)
 RUN cp .env.example .env || echo "APP_KEY=" > .env
 
-# Install Composer dependencies (skip scripts that require runtime environment)
-RUN composer install --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+# Clear any existing vendor
+RUN rm -rf vendor composer.lock || true
 
-# Generate autoload files
+# Install Composer dependencies without lock file first
+RUN composer install --no-scripts --no-interaction 2>&1 | tee /tmp/composer-output.log || \
+    (cat /tmp/composer-output.log && exit 1)
+
+# Optimize autoload
 RUN composer dump-autoload --optimize
 
 # Install NPM dependencies and build assets
