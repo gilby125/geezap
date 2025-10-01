@@ -33,6 +33,13 @@ services:
       - QUEUE_CONNECTION=redis
       - SESSION_DRIVER=redis
       - BROADCAST_CONNECTION=reverb
+      - REVERB_APP_ID=${REVERB_APP_ID:-geezap}
+      - REVERB_APP_KEY=${REVERB_APP_KEY}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET}
+      - VITE_REVERB_APP_KEY=${REVERB_APP_KEY}
+      - VITE_REVERB_HOST=${VITE_REVERB_HOST:-localhost}
+      - VITE_REVERB_PORT=${REVERB_PORT:-8776}
+      - VITE_REVERB_SCHEME=${REVERB_SCHEME:-http}
     networks:
       - geezap-network
     depends_on:
