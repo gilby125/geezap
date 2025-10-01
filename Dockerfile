@@ -2,13 +2,14 @@ FROM php:8.3-fpm-alpine AS app
 
 ARG APP_ENV=production
 ARG APP_URL=http://localhost:8777
+ARG VITE_REVERB_APP_KEY=abcdefghijklmnop
 ARG VITE_REVERB_HOST=192.168.7.10
 ARG VITE_REVERB_PORT=8776
 ARG VITE_REVERB_SCHEME=http
 
 LABEL maintainer="Geezap"
 LABEL description="Geezap Laravel Application"
-LABEL build.version="1.0.1"
+LABEL build.version="1.0.2"
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -79,6 +80,7 @@ RUN composer install --no-scripts --no-interaction --ignore-platform-reqs 2>&1 |
 RUN npm ci && \
     export ASSET_URL=${APP_URL} && \
     export APP_URL=${APP_URL} && \
+    export VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY:-abcdefghijklmnop} && \
     export VITE_REVERB_HOST=${VITE_REVERB_HOST:-192.168.7.10} && \
     export VITE_REVERB_PORT=${VITE_REVERB_PORT:-8776} && \
     export VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME:-http} && \
