@@ -61,7 +61,8 @@ class AppServiceProvider extends ServiceProvider
 
     private function configureUrl(): void
     {
-        if(config('app.env') === 'production') {
+        // Only force HTTPS if APP_URL explicitly uses https://
+        if(config('app.env') === 'production' && str_starts_with(config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
     }
