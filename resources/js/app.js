@@ -1,8 +1,6 @@
 import './bootstrap';
-import Alpine from 'alpinejs';
 
-window.Alpine = Alpine;
-Alpine.start();
+// Alpine is included by Livewire 3, no need to import separately
 
 window.toggleMobileMenu = () => {
     const menu = document.getElementById('mobile-menu');
