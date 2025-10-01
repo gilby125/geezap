@@ -64,8 +64,8 @@ COPY . /var/www/html
 # Create .env file for build time (required for artisan commands)
 RUN cp .env.example .env || echo "APP_KEY=" > .env
 
-# Set APP_URL in .env for asset building
-RUN echo "APP_URL=${APP_URL}" >> .env
+# Replace APP_URL in .env for asset building
+RUN sed -i "s|^APP_URL=.*|APP_URL=${APP_URL}|g" .env
 
 # Install Composer dependencies (includes autoload generation)
 RUN composer install --no-scripts --no-interaction --ignore-platform-reqs 2>&1 | tee /tmp/composer-output.log || \
