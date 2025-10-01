@@ -71,7 +71,12 @@ RUN composer install --no-scripts --no-interaction --ignore-platform-reqs 2>&1 |
     (cat /tmp/composer-output.log && exit 1)
 
 # Install NPM dependencies and build assets with correct URL
-RUN npm ci && APP_URL=${APP_URL} npm run build && npm cache clean --force
+# Force Vite to use APP_URL from environment
+RUN npm ci && \
+    export ASSET_URL=${APP_URL} && \
+    export APP_URL=${APP_URL} && \
+    npm run build && \
+    npm cache clean --force
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
