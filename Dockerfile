@@ -78,3 +78,13 @@ EXPOSE 9000
 
 # Start PHP-FPM
 CMD ["php-fpm"]
+
+# Nginx stage for serving the application
+FROM nginx:alpine AS nginx
+
+# Copy nginx configuration
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Copy public files from app stage
+COPY --from=app /var/www/html/public /var/www/html/public
+COPY --from=app /var/www/html/storage/app/public /var/www/html/storage/app/public

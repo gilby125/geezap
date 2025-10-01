@@ -11,9 +11,8 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
-      - ./:/var/www/html
-      - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+      - app-storage:/var/www/html/storage
+      - app-bootstrap-cache:/var/www/html/bootstrap/cache
     environment:
       - APP_NAME=${APP_NAME:-Geezap}
       - APP_ENV=${APP_ENV:-production}
@@ -52,14 +51,17 @@ services:
       - "com.portainer.managed=true"
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx
+    image: geezap-nginx:latest
     container_name: geezap-nginx
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8777}:80"
     volumes:
-      - ./:/var/www/html
-      - ./docker/nginx:/etc/nginx/conf.d:ro
+      - app-storage:/var/www/html/storage/app/public:ro
     networks:
       - geezap-network
     depends_on:
@@ -124,8 +126,7 @@ services:
     working_dir: /var/www/html
     command: php artisan horizon
     volumes:
-      - ./:/var/www/html
-      - ./storage:/var/www/html/storage
+      - app-storage:/var/www/html/storage
     environment:
       - APP_NAME=${APP_NAME:-Geezap}
       - APP_ENV=${APP_ENV:-production}
@@ -164,8 +165,6 @@ services:
     command: php artisan reverb:start --host=0.0.0.0 --port=8080
     ports:
       - "${REVERB_PORT:-8776}:8080"
-    volumes:
-      - ./:/var/www/html
     environment:
       - APP_NAME=${APP_NAME:-Geezap}
       - APP_ENV=${APP_ENV:-production}
@@ -200,8 +199,7 @@ services:
         sleep 60
       done"
     volumes:
-      - ./:/var/www/html
-      - ./storage:/var/www/html/storage
+      - app-storage:/var/www/html/storage
     environment:
       - APP_NAME=${APP_NAME:-Geezap}
       - APP_ENV=${APP_ENV:-production}
@@ -252,6 +250,21 @@ networks:
       - "com.portainer.managed=true"
 
 volumes:
+  app-storage:
+    driver: local
+    labels:
+      - "com.geezap.description=Application Storage Volume"
+      - "com.portainer.managed=true"
+  app-bootstrap-cache:
+    driver: local
+    labels:
+      - "com.geezap.description=Application Bootstrap Cache Volume"
+      - "com.portainer.managed=true"
+  app-public:
+    driver: local
+    labels:
+      - "com.geezap.description=Application Public Assets Volume"
+      - "com.portainer.managed=true"
   mysql-data:
     driver: local
     labels:
