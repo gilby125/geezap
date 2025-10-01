@@ -6,6 +6,7 @@ services:
       target: app
       args:
         - APP_ENV=production
+        - APP_URL=${APP_URL:-http://localhost:8777}
     container_name: geezap-app
     restart: unless-stopped
     working_dir: /var/www/html
@@ -54,6 +55,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: nginx
+      args:
+        - APP_ENV=production
+        - APP_URL=${APP_URL:-http://localhost:8777}
     container_name: geezap-nginx
     restart: unless-stopped
     ports:

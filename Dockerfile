@@ -1,6 +1,7 @@
 FROM php:8.3-fpm-alpine AS app
 
 ARG APP_ENV=production
+ARG APP_URL=http://localhost:8777
 
 LABEL maintainer="Geezap"
 LABEL description="Geezap Laravel Application"
@@ -62,12 +63,15 @@ COPY . /var/www/html
 # Create .env file for build time (required for artisan commands)
 RUN cp .env.example .env || echo "APP_KEY=" > .env
 
+# Set APP_URL in .env for asset building
+RUN echo "APP_URL=${APP_URL}" >> .env
+
 # Install Composer dependencies (includes autoload generation)
 RUN composer install --no-scripts --no-interaction --ignore-platform-reqs 2>&1 | tee /tmp/composer-output.log || \
     (cat /tmp/composer-output.log && exit 1)
 
-# Install NPM dependencies and build assets
-RUN npm ci && npm run build && npm cache clean --force
+# Install NPM dependencies and build assets with correct URL
+RUN npm ci && APP_URL=${APP_URL} npm run build && npm cache clean --force
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
