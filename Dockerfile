@@ -54,12 +54,15 @@ WORKDIR /var/www/html
 # Set composer environment variables
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV COMPOSER_NO_INTERACTION=1
+ENV COMPOSER_MEMORY_LIMIT=-1
 
 # Copy all application files first
 COPY . /var/www/html
 
-# Install Composer dependencies
-RUN composer install --optimize-autoloader --no-interaction --prefer-dist
+# Install Composer dependencies with verbose output
+RUN composer install --optimize-autoloader --no-interaction --prefer-dist --verbose || \
+    (echo "Composer install failed. Trying with --no-dev..." && \
+    composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --verbose)
 
 # Install NPM dependencies and build assets
 RUN npm ci && npm run build && npm cache clean --force
