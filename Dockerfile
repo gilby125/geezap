@@ -5,6 +5,7 @@ ARG APP_URL=http://localhost:8777
 
 LABEL maintainer="Geezap"
 LABEL description="Geezap Laravel Application"
+LABEL build.version="1.0.1"
 
 # Install system dependencies
 RUN apk add --no-cache \
