@@ -55,23 +55,11 @@ WORKDIR /var/www/html
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV COMPOSER_NO_INTERACTION=1
 
-# Copy composer files and packages directory first for better layer caching
-COPY composer.json composer.lock ./
-COPY packages ./packages
-
-# Copy app directory and helpers for autoload requirements
-COPY app ./app
-COPY database ./database
-COPY bootstrap ./bootstrap
-
-# Install Composer dependencies (always include dev for local package compatibility)
-RUN composer install --optimize-autoloader --no-interaction --prefer-dist --no-scripts
-
-# Copy the rest of the application files
+# Copy all application files first
 COPY . /var/www/html
 
-# Run composer scripts after all files are copied
-RUN composer dump-autoload --optimize
+# Install Composer dependencies
+RUN composer install --optimize-autoloader --no-interaction --prefer-dist
 
 # Install NPM dependencies and build assets
 RUN npm ci && npm run build && npm cache clean --force
