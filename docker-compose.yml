@@ -1,0 +1,264 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+      args:
+        - APP_ENV=production
+    image: geezap-app:latest
+    container_name: geezap-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    environment:
+      - APP_NAME=${APP_NAME:-Geezap}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-http://localhost}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-geezap}
+      - DB_USERNAME=${DB_USERNAME:-geezap}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PORT=6379
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=redis
+      - SESSION_DRIVER=redis
+      - BROADCAST_CONNECTION=reverb
+    networks:
+      - geezap-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "com.geezap.description=Laravel Application Container"
+      - "com.portainer.managed=true"
+
+  nginx:
+    image: nginx:alpine
+    container_name: geezap-nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./storage/app/public:/var/www/html/storage/app/public
+      - ./public:/var/www/html/public
+    networks:
+      - geezap-network
+    depends_on:
+      - app
+    labels:
+      - "com.geezap.description=Nginx Web Server"
+      - "com.portainer.managed=true"
+
+  mysql:
+    image: mysql:8.0
+    container_name: geezap-mysql
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root}
+      - MYSQL_DATABASE=${DB_DATABASE:-geezap}
+      - MYSQL_USER=${DB_USERNAME:-geezap}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - geezap-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.geezap.description=MySQL Database"
+      - "com.portainer.managed=true"
+
+  redis:
+    image: redis:7-alpine
+    container_name: geezap-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    volumes:
+      - redis-data:/data
+    networks:
+      - geezap-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.geezap.description=Redis Cache & Queue"
+      - "com.portainer.managed=true"
+
+  horizon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    image: geezap-app:latest
+    container_name: geezap-horizon
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan horizon
+    volumes:
+      - ./:/var/www/html
+      - ./storage:/var/www/html/storage
+    environment:
+      - APP_NAME=${APP_NAME:-Geezap}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-geezap}
+      - DB_USERNAME=${DB_USERNAME:-geezap}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+    networks:
+      - geezap-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "com.geezap.description=Laravel Horizon Queue Worker"
+      - "com.portainer.managed=true"
+
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    image: geezap-app:latest
+    container_name: geezap-reverb
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports:
+      - "${REVERB_PORT:-8080}:8080"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - APP_NAME=${APP_NAME:-Geezap}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY}
+      - REVERB_APP_ID=${REVERB_APP_ID}
+      - REVERB_APP_KEY=${REVERB_APP_KEY}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET}
+      - REVERB_HOST=0.0.0.0
+      - REVERB_PORT=8080
+      - REVERB_SCHEME=${REVERB_SCHEME:-http}
+    networks:
+      - geezap-network
+    depends_on:
+      - app
+      - redis
+    labels:
+      - "com.geezap.description=Laravel Reverb WebSocket Server"
+      - "com.portainer.managed=true"
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    image: geezap-app:latest
+    container_name: geezap-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: >
+      sh -c "while true; do
+        php artisan schedule:run --verbose --no-interaction &
+        sleep 60
+      done"
+    volumes:
+      - ./:/var/www/html
+      - ./storage:/var/www/html/storage
+    environment:
+      - APP_NAME=${APP_NAME:-Geezap}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-geezap}
+      - DB_USERNAME=${DB_USERNAME:-geezap}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PORT=6379
+    networks:
+      - geezap-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "com.geezap.description=Laravel Task Scheduler"
+      - "com.portainer.managed=true"
+
+  typesense:
+    image: typesense/typesense:27.1
+    container_name: geezap-typesense
+    restart: unless-stopped
+    ports:
+      - "${TYPESENSE_PORT:-8108}:8108"
+    environment:
+      - TYPESENSE_DATA_DIR=/data
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-xyz}
+      - TYPESENSE_ENABLE_CORS=true
+    volumes:
+      - typesense-data:/data
+    networks:
+      - geezap-network
+    labels:
+      - "com.geezap.description=Typesense Search Engine"
+      - "com.portainer.managed=true"
+
+networks:
+  geezap-network:
+    driver: bridge
+    labels:
+      - "com.geezap.description=Geezap Application Network"
+      - "com.portainer.managed=true"
+
+volumes:
+  mysql-data:
+    driver: local
+    labels:
+      - "com.geezap.description=MySQL Database Volume"
+      - "com.portainer.managed=true"
+  redis-data:
+    driver: local
+    labels:
+      - "com.geezap.description=Redis Data Volume"
+      - "com.portainer.managed=true"
+  typesense-data:
+    driver: local
+    labels:
+      - "com.geezap.description=Typesense Data Volume"
+      - "com.portainer.managed=true"
