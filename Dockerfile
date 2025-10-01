@@ -59,10 +59,14 @@ ENV COMPOSER_MEMORY_LIMIT=-1
 # Copy all application files first
 COPY . /var/www/html
 
-# Install Composer dependencies with verbose output
-RUN composer install --optimize-autoloader --no-interaction --prefer-dist --verbose || \
-    (echo "Composer install failed. Trying with --no-dev..." && \
-    composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --verbose)
+# Create .env file for build time (required for artisan commands)
+RUN cp .env.example .env || echo "APP_KEY=" > .env
+
+# Install Composer dependencies (skip scripts that require runtime environment)
+RUN composer install --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+
+# Generate autoload files
+RUN composer dump-autoload --optimize
 
 # Install NPM dependencies and build assets
 RUN npm ci && npm run build && npm cache clean --force
