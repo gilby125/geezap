@@ -260,11 +260,6 @@ volumes:
     labels:
       - "com.geezap.description=Application Bootstrap Cache Volume"
       - "com.portainer.managed=true"
-  app-public:
-    driver: local
-    labels:
-      - "com.geezap.description=Application Public Assets Volume"
-      - "com.portainer.managed=true"
   mysql-data:
     driver: local
     labels:
