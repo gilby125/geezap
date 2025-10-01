@@ -172,6 +172,16 @@ services:
       - APP_NAME=${APP_NAME:-Geezap}
       - APP_ENV=${APP_ENV:-production}
       - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-geezap}
+      - DB_USERNAME=${DB_USERNAME:-geezap}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PORT=6379
+      - CACHE_STORE=redis
       - REVERB_APP_ID=${REVERB_APP_ID}
       - REVERB_APP_KEY=${REVERB_APP_KEY}
       - REVERB_APP_SECRET=${REVERB_APP_SECRET}
@@ -181,8 +191,10 @@ services:
     networks:
       - geezap-network
     depends_on:
-      - app
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     labels:
       - "com.geezap.description=Laravel Reverb WebSocket Server"
       - "com.portainer.managed=true"
