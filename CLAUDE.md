@@ -1,3 +1,208 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Application Overview
+
+**Geezap** is a job aggregation platform that consolidates job listings from multiple sources (LinkedIn, Upwork, Indeed, ZipRecruiter) into a unified search interface. The platform provides AI-powered cover letter generation, application tracking, weekly job digests, and real-time notifications via WebSockets.
+
+### Core Features
+- Multi-platform job aggregation with standardized formatting
+- Application status tracking (Applied, Saved)
+- AI-powered cover letter generation (OpenAI integration)
+- Weekly job digest emails via failover mail configuration
+- Push notifications via web push service
+- Social authentication (GitHub, Google, Facebook)
+- Filament admin panel at `/geezap`
+- Real-time updates via Laravel Reverb WebSocket server
+- Typesense-powered search
+- Bot protection using Cloudflare Turnstile
+
+### Tech Stack
+- **Backend:** Laravel 12, PHP 8.3
+- **Frontend:** Livewire 3, Alpine.js (included with Livewire), TailwindCSS v3
+- **Admin Panel:** Filament v3
+- **Database:** MySQL 8.0
+- **Cache/Queue:** Redis
+- **Search:** Typesense
+- **WebSockets:** Laravel Reverb
+- **Queue Worker:** Laravel Horizon
+- **AI:** OpenAI API, Prism PHP
+- **Monitoring:** Sentry, Log Viewer, Prometheus metrics
+- **Testing:** Pest v3
+
+## Architecture
+
+### Key Directories
+- `app/Services/` - Business logic services (AIService, JobRecommendationService, SeoMetaService, etc.)
+- `app/Filament/Resources/` - Filament admin CRUD resources
+- `app/Livewire/` - Livewire components for frontend interactivity
+- `app/Jobs/` - Queued background jobs
+- `app/DTO/` - Data Transfer Objects for structured data
+- `app/Enums/` - Application enums (use TitleCase for keys)
+- `app/Pipelines/` - Pipeline pattern implementations
+- `app/Observers/` - Model observers
+- `packages/geezap/content-formatter/` - Local package for content formatting
+
+### Important Models
+- `JobListing` - Core job data model
+- `JobCategory` - Job categorization
+- `JobUser` - Pivot table tracking user job interactions
+- `ApiKey` - Third-party API key management for job sources
+- `User` - User accounts with social auth support
+- `UserPreference` - User job preferences and filters
+- `Country` - Job location data
+
+### Service Layer
+The application uses dedicated service classes for business logic:
+- `AIService` - Cover letter generation and AI interactions
+- `JobRecommendationService` - Personalized job matching
+- `SeoMetaService` - Dynamic meta tag generation
+- `GoogleIndexingService` - Google indexing API integration
+- `SocialAuthService` - Social authentication handling
+
+### External API Integration
+- Job data fetched via HTTP macros defined in `AppServiceProvider::registerHttpMacros()`
+- API key rotation logic in `ApiKey` model
+- Rate limiting tracked per API key
+
+## Development Commands
+
+### Local Development
+```bash
+# Start development servers
+npm run dev                    # Vite asset compilation
+php artisan serve             # Laravel development server
+php artisan reverb:start      # WebSocket server
+
+# Queue and scheduling
+php artisan horizon           # Queue worker with dashboard
+php artisan schedule:run      # Run scheduled tasks (production uses scheduler container)
+```
+
+### Docker Deployment (Portainer)
+```bash
+# Deploy via Portainer stack from Git repository
+# Stack pulls from: https://github.com/gilby125/geezap.git
+
+# Required environment variables in Portainer:
+APP_KEY=base64:...
+APP_URL=http://192.168.7.10:8777
+DB_PASSWORD=your_password
+DB_ROOT_PASSWORD=your_password
+REVERB_APP_ID=geezap
+REVERB_APP_KEY=your_key
+REVERB_APP_SECRET=your_secret
+VITE_REVERB_HOST=192.168.7.10
+VITE_REVERB_PORT=8776
+
+# Services run on custom ports:
+# - Frontend: 8777
+# - Reverb WebSocket: 8776
+# - MySQL: 3307
+# - Redis: 6380
+# - Typesense: 8108
+
+# Force image rebuild (increment build.version label in Dockerfile)
+```
+
+### Testing
+```bash
+# Run tests
+php artisan test                              # All tests
+php artisan test tests/Feature/ExampleTest.php   # Specific file
+php artisan test --filter=testName           # Specific test
+
+# Code formatting
+vendor/bin/pint --dirty                      # Format changed files
+```
+
+### Database
+```bash
+# Migrations
+php artisan migrate --force                  # Production migrations
+
+# Seeding
+php artisan db:seed                          # Seed database (includes admin user)
+```
+
+### Admin Panel Setup
+```bash
+# Access admin panel at /geezap
+# Admin credentials are in database seeders
+
+# Add job categories via: /geezap/job-categories
+# Add API keys via: /geezap/api-keys
+```
+
+## Important Implementation Notes
+
+### Frontend Assets & Reverb
+- **Critical:** Reverb credentials (`VITE_REVERB_APP_KEY`, `VITE_REVERB_HOST`, `VITE_REVERB_PORT`) must be set as **build arguments** in Docker, not just runtime environment variables
+- Frontend JavaScript is compiled during Docker build with Vite
+- Changing Reverb config requires rebuilding Docker images (increment `build.version` label)
+- Alpine.js is included with Livewire 3 - do NOT import it separately in `resources/js/app.js`
+
+### HTTPS/URL Handling
+- `AppServiceProvider::configureUrl()` conditionally forces HTTPS only when `APP_URL` starts with `https://`
+- For HTTP deployments, ensure `APP_URL` uses `http://` scheme
+- Asset URLs respect `APP_URL` configuration
+
+### Environment Variables
+- Never use `env()` outside config files - always use `config('key')`
+- Dockerfile uses `sed` to replace `APP_URL` in `.env` during build
+- `.env.example` must not have inline comments (breaks dotenv parser)
+
+### Third-Party Services
+- Web push notifications via `web.webpushs.com` (configured in header.blade.php)
+- Cloudflare Turnstile for bot protection
+- Sentry for error tracking
+- Google Indexing API for SEO
+
+### Background Jobs
+- Laravel Horizon dashboard at `/horizon`
+- All time-consuming operations should implement `ShouldQueue`
+- Job scheduling configured in `routes/console.php` or `bootstrap/app.php`
+
+### Local Package
+- `geezap/content-formatter` is a local Composer package in `packages/`
+- Must be copied into Docker image before `composer install`
+
+## Code Conventions
+
+### PHP
+- Use PHP 8 constructor property promotion
+- Always use explicit return type declarations
+- TitleCase for Enum keys
+- Prefer PHPDoc blocks over inline comments
+- Follow existing validation patterns (check sibling Form Requests for array vs string rules)
+
+### Frontend
+- Livewire 3 conventions: use `wire:model.live` for real-time, `wire:model` is deferred
+- Always add `wire:key` in loops
+- Use `wire:loading` and `wire:dirty` for loading states
+- Check existing Blade components before creating new ones
+- Use TailwindCSS gap utilities for spacing (not margins)
+- Support dark mode with `dark:` classes where existing pages do
+
+### Testing
+- All tests use Pest, not PHPUnit
+- Use factories with custom states when available
+- Follow existing test patterns for Filament (use `livewire()` assertions)
+- Test all happy paths, failure paths, and edge cases
+- Run minimal tests with `--filter` during development
+
+### Filament
+- Resources live in `app/Filament/Resources/`
+- Use `relationship()` method on form components when possible
+- Always pass `--no-interaction` to Artisan commands
+- Test Filament features with Livewire test helpers
+
+## Running Code Formatter
+```bash
+vendor/bin/pint --dirty    # Always run before committing
+```
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
@@ -319,7 +524,7 @@ Forms\Components\Select::make('user_id')
 ## Testing Livewire
 
 <code-snippet name="Example Livewire component test" lang="php">
-    Livewire::test(Counter::class)
+    Livewire::Test(Counter::class)
         ->assertSet('count', 0)
         ->call('increment')
         ->assertSet('count', 1)
