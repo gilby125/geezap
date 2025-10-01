@@ -2,6 +2,9 @@ FROM php:8.3-fpm-alpine AS app
 
 ARG APP_ENV=production
 ARG APP_URL=http://localhost:8777
+ARG VITE_REVERB_HOST=192.168.7.10
+ARG VITE_REVERB_PORT=8776
+ARG VITE_REVERB_SCHEME=http
 
 LABEL maintainer="Geezap"
 LABEL description="Geezap Laravel Application"
@@ -72,10 +75,13 @@ RUN composer install --no-scripts --no-interaction --ignore-platform-reqs 2>&1 |
     (cat /tmp/composer-output.log && exit 1)
 
 # Install NPM dependencies and build assets with correct URL
-# Force Vite to use APP_URL from environment
+# Force Vite to use APP_URL and Reverb config from environment
 RUN npm ci && \
     export ASSET_URL=${APP_URL} && \
     export APP_URL=${APP_URL} && \
+    export VITE_REVERB_HOST=${VITE_REVERB_HOST:-192.168.7.10} && \
+    export VITE_REVERB_PORT=${VITE_REVERB_PORT:-8776} && \
+    export VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME:-http} && \
     npm run build && \
     npm cache clean --force
 
