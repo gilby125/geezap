@@ -9,7 +9,7 @@ ARG VITE_REVERB_SCHEME=http
 
 LABEL maintainer="Geezap"
 LABEL description="Geezap Laravel Application"
-LABEL build.version="1.0.2"
+LABEL build.version="1.0.3"
 
 # Install system dependencies
 RUN apk add --no-cache \

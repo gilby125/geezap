@@ -40,8 +40,11 @@ document.addEventListener('click', (e) => {
     const menu = document.getElementById('mobile-menu');
     const menuButton = document.getElementById('menu-toggle');
 
-    if (!menu.contains(e.target) && !menuButton.contains(e.target) &&
-        !menu.classList.contains('translate-x-full')) {
-        toggleMobileMenu();
+    // Only run if menu elements exist on the page
+    if (menu && menuButton) {
+        if (!menu.contains(e.target) && !menuButton.contains(e.target) &&
+            !menu.classList.contains('translate-x-full')) {
+            toggleMobileMenu();
+        }
     }
 });
