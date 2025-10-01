@@ -21,7 +21,6 @@ tests
 .gitignore
 .gitattributes
 phpunit.xml
-README.md
 docker-compose*.yml
 Dockerfile
 .dockerignore

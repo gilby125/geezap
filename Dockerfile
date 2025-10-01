@@ -51,15 +51,22 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
-COPY . /var/www/html
+# Copy composer files and packages directory first for better layer caching
+COPY composer.json composer.lock ./
+COPY packages ./packages
 
 # Install Composer dependencies
 RUN if [ "$APP_ENV" = "production" ]; then \
-    composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist; \
+    composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts; \
     else \
-    composer install --optimize-autoloader --no-interaction --prefer-dist; \
+    composer install --optimize-autoloader --no-interaction --prefer-dist --no-scripts; \
     fi
+
+# Copy the rest of the application files
+COPY . /var/www/html
+
+# Run composer scripts after all files are copied
+RUN composer dump-autoload --optimize
 
 # Install NPM dependencies and build assets
 RUN npm ci && npm run build && npm cache clean --force
